@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Swipe-to-Text Virtual Keyboard</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>Swipe-to-Text Virtual Keyboard</h1>
+        <div class="toolbar">
+            <div class="toolbar-left">
+                <button id="help-button" class="help-btn" title="How it works">❓ Tips</button>
+            </div>
+            <button id="settings-button" class="settings-btn" aria-expanded="false" aria-controls="settings-panel" title="Open settings">⚙️ Settings</button>
+        </div>
+        <div class="settings-panel" id="settings-panel" role="dialog" aria-modal="true">
+            <div class="settings-header">
+                <h3>Keyboard Settings</h3>
+                <button id="close-settings" class="close-settings" aria-label="Close settings">✕</button>
+            </div>
+            <div class="settings-section">
+                <details class="settings-group" open>
+                    <summary>Layout & Input</summary>
+                    <div class="slider-control">
+                        <label for="key-size-slider">Key Size</label>
+                        <input type="range" id="key-size-slider" min="40" max="80" value="50">
+                        <span id="key-size-value">50px</span>
+                    </div>
+                    <label for="keyboard-language-select">Keyboard Language</label>
+                    <select id="keyboard-language-select"></select>
+                    <label for="language-select">Dictation Language</label>
+                    <select id="language-select"></select>
+                    <div class="voice-control">
+                        <button id="start-voice" class="voice-btn">🎙️ Start Dictation</button>
+                        <button id="stop-voice" class="voice-btn" style="display:none;">⏹️ Stop Dictation</button>
+                        <span id="voice-status" class="voice-status">Dictation idle</span>
+                    </div>
+                </details>
+            </div>
+            <div class="settings-section">
+                <details class="settings-group" open>
+                    <summary>Appearance</summary>
+                    <label for="theme-select">Theme</label>
+                    <select id="theme-select">
+                        <option value="light">Light</option>
+                        <option value="dark">Dark</option>
+                    </select>
+                    <label for="accent-mode-select">Color Mode</label>
+                    <select id="accent-mode-select">
+                        <option value="gradient">Gradient</option>
+                        <option value="solid">Solid</option>
+                    </select>
+                    <div class="color-pickers">
+                        <div class="color-input-group gradient-only">
+                            <label for="accent-start-input">Gradient Start</label>
+                            <input type="color" id="accent-start-input">
+                        </div>
+                        <div class="color-input-group gradient-only">
+                            <label for="accent-end-input">Gradient End</label>
+                            <input type="color" id="accent-end-input">
+                        </div>
+                        <div class="color-input-group solid-only">
+                            <label for="accent-solid-input">Solid Color</label>
+                            <input type="color" id="accent-solid-input">
+                        </div>
+                    </div>
+                    <button id="accent-reset-btn" class="primary-btn small">Reset Colors</button>
+                </details>
+            </div>
+            <div class="settings-section">
+                <details class="settings-group">
+                    <summary>Tools & Analytics</summary>
+                    <label class="toggle-row" for="stats-toggle">
+                        <span>Show Stats Panel</span>
+                        <span class="switch">
+                            <input type="checkbox" id="stats-toggle" checked>
+                            <span class="slider"></span>
+                        </span>
+                    </label>
+                    <div class="grammar-controls">
+                        <button id="grammar-fix-btn" class="primary-btn small">✨ Fix Grammar</button>
+                        <span id="grammar-status" class="grammar-status"></span>
+                    </div>
+                </details>
+            </div>
+        </div>
+        
+        <!-- Stats Dashboard -->
+        <div class="stats-dashboard">
+            <div class="stat-card">
+                <div class="stat-value" id="wpm-display">0</div>
+                <div class="stat-label">WPM</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="efficiency-display">100%</div>
+                <div class="stat-label">Efficiency</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="char-count">0</div>
+                <div class="stat-label">Characters</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="word-count">0</div>
+                <div class="stat-label">Words</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="swipe-count">0</div>
+                <div class="stat-label">Swipes</div>
+            </div>
+        </div>
+        
+        <!-- Text input area -->
+        <div class="input-section">
+            <textarea id="typed" placeholder="Tap keys or swipe across them to type..."></textarea>
+        </div>
+        
+        <!-- Instructions -->
+        <div class="instructions">
+            <p id="instructions-text"><strong>Tap</strong> or <strong>Swipe</strong> letters, <strong>Hold+Drag</strong> to draw trails, and use <strong>Finger Tracking</strong> below for hands-free typing.</p>
+        </div>
+        <!-- Keyboard container -->
+        <div class="keyboard-area">
+            <div id="keyboard-container"></div>
+            <div id="gesture-trail"></div>
+        </div>
+        
+        <!-- Hand tracking controls -->
+        <div class="eye-tracking-controls">
+            <button id="start-hand-tracking" class="eye-btn">👆 Start Finger Tracking</button>
+            <button id="stop-hand-tracking" class="eye-btn" style="display:none;">⏹️ Stop Finger Tracking</button>
+            <span id="hand-status" class="eye-status">Finger tracking inactive</span>
+        </div>
+    </div>
+    <div class="settings-overlay" id="settings-overlay"></div>
+    <div class="intro-overlay" id="intro-overlay" aria-hidden="true">
+        <div class="intro-modal" role="dialog" aria-modal="true" aria-labelledby="intro-title">
+            <h2 id="intro-title">How to use the keyboard</h2>
+            <ul class="intro-list">
+                <li><strong>Tap</strong> letters or drag across them to swipe words faster.</li>
+                <li><strong>Hold</strong> any letter for 3 seconds to draw gesture trails.</li>
+                <li><strong>Voice dictation</strong> and <strong>grammar hints</strong> live inside ⚙️ Settings.</li>
+                <li><strong>Finger tracking</strong>: start the camera controls to select keys hands-free.</li>
+            </ul>
+            <label class="intro-checkbox">
+                <input type="checkbox" id="intro-hide-checkbox"> Don’t show this again
+            </label>
+            <button id="intro-close-btn" class="primary-btn">Got it</button>
+        </div>
+    </div>
+    
+    <!-- Video for hand tracking (hidden) -->
+    <video id="hand-video" style="display:none;"></video>
+    
+    <!-- Finger pointer -->
+    <div id="finger-dot"></div>
+    
+    <script src="keyboard.js"></script>
+</body>
+</html>
