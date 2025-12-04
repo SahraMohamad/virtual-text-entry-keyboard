@@ -7,6 +7,8 @@
 :root {
     --key-size: 50px;
     --key-font-size: 18px;
+    --key-gap-x: 32px;
+    --key-gap-y: 32px;
     --bg-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     --container-bg: #ffffff;
     --text-color: #333333;
@@ -134,11 +136,6 @@ h1 {
     letter-spacing: 0.5px;
     color: var(--muted-text);
     margin-bottom: 4px;
-}
-
-.grammar-status {
-    font-size: 13px;
-    color: var(--muted-text);
 }
 
 .toolbar {
@@ -271,13 +268,6 @@ h1 {
     color: var(--muted-text);
 }
 
-.grammar-controls {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-}
-
 .settings-hint {
     font-size: 13px;
     color: var(--muted-text);
@@ -397,9 +387,7 @@ body.accent-mode-solid .solid-only {
     transform: translateX(20px);
 }
 
-#language-select,
-#theme-select,
-#keyboard-language-select {
+#theme-select {
     width: 100%;
     padding: 8px 12px;
     border-radius: 8px;
@@ -515,7 +503,7 @@ body.accent-mode-solid .solid-only {
 #keyboard-container {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: var(--key-gap-y);
     user-select: none;
     touch-action: none;
     position: relative;
@@ -553,7 +541,7 @@ body.accent-mode-solid .solid-only {
 .keyboard-row {
     display: flex;
     justify-content: center;
-    gap: 8px;
+    gap: var(--key-gap-x);
 }
 
 .key {

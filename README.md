@@ -13,18 +13,17 @@ A browser-based keyboard that supports tap, swipe, gesture trails, voice dictati
 
 ## Key Features
 
-- **Layouts & Languages**
-  - Switch between English, Spanish, and Somali keyboard layouts via ⚙️ → “Layout & Input”.
-  - Voice dictation supports multiple locales (uses Web Speech API).
-  - Enable the **Fitts Bubble Layout** to bring frequent letters closer with larger targets.
+- **Layout & Input**
+  - Tunable key size plus separate horizontal/vertical spacing sliders for swipe comfort.
+  - QWERTY layout with emoji/symbol toggles, swipe typing, and gesture trails.
+  - Voice dictation (Web Speech API) with start/stop controls.
 - **Appearance**
   - Toggle light/dark themes.
   - Customize keyboard gradient colors (start + end) in the settings panel.
 - **Input Enhancements**
   - Gesture trails for long-press swiping.
   - Camera-based finger tracking (MediaPipe) for hands-free typing.
-  - Voice dictation with start/stop controls.
-  - Inline grammar fixer (manual button in tools section).
+- **Analytics**
 - **Analytics**
   - Tracks WPM, efficiency, character/word counts, swipe/tap totals, etc.
   - Stats panel can be hidden via ⚙️ → Tools & Analytics.
@@ -33,10 +32,9 @@ A browser-based keyboard that supports tap, swipe, gesture trails, voice dictati
 
 ## Settings Overview (⚙️)
 
-- **Layout & Input**: key size slider, layout style toggle, keyboard language, dictation language, voice controls.
-- **Appearance**: theme selector, gradient color pickers.
-- **Tools & Analytics**: stats panel toggle, “Fix Grammar” button.
-- **Testing Mode**: sentence selector, randomizer, start/complete controls, live keystroke/WPM/MSD readout.
+- **Layout & Input**: key size slider, horizontal/vertical spacing sliders, voice dictation controls.
+- **Appearance**: theme selector, gradient/solid color pickers.
+- **Tools & Testing**: stats panel toggle plus the trial sentence selector, randomizer, and start/complete/cancel controls with live MSD/WPM readouts.
 
 ## Testing Mode
 

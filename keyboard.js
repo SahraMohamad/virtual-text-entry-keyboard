@@ -45,13 +45,14 @@ const DEFAULT_ACCENT_SOLID = '#667eea';
 
 const STORAGE_KEYS = {
     keySize: 'swipeKeyboardKeySize',
+    keyGapX: 'swipeKeyboardKeyGapX',
+    keyGapY: 'swipeKeyboardKeyGapY',
     language: 'swipeKeyboardLanguage',
     theme: 'swipeKeyboardTheme',
     statsVisible: 'swipeKeyboardStatsVisible',
     introSeen: 'swipeKeyboardIntroSeen',
     accentStart: 'swipeKeyboardAccentStart',
     accentEnd: 'swipeKeyboardAccentEnd',
-    keyboardLanguage: 'swipeKeyboardKeyboardLanguage',
     accentMode: 'swipeKeyboardAccentMode',
     accentSolid: 'swipeKeyboardAccentSolid'
 };
@@ -59,37 +60,6 @@ const STORAGE_KEYS = {
 const DEFAULT_LANGUAGE = navigator.language || 'en-US';
 const HOLD_TO_GESTURE_DELAY = 3000;
 const SWIPE_CLICK_SUPPRESS_DELAY = 1000;
-
-const LANGUAGE_OPTIONS = [
-    { value: 'auto', label: `Auto (${DEFAULT_LANGUAGE})` },
-    { value: 'en-US', label: 'English (US)' },
-    { value: 'en-GB', label: 'English (UK)' },
-    { value: 'es-ES', label: 'Español (ES)' },
-    { value: 'es-MX', label: 'Español (MX)' },
-    { value: 'fr-FR', label: 'Français' },
-    { value: 'de-DE', label: 'Deutsch' },
-    { value: 'it-IT', label: 'Italiano' },
-    { value: 'pt-BR', label: 'Português (BR)' },
-    { value: 'so-SO', label: 'Af Soomaali' },
-    { value: 'sw-KE', label: 'Kiswahili' },
-    { value: 'ar-SA', label: 'Arabic' },
-    { value: 'hi-IN', label: 'हिन्दी' },
-    { value: 'zh-CN', label: '中文 (简体)' },
-    { value: 'ja-JP', label: '日本語' },
-    { value: 'ko-KR', label: '한국어' }
-];
-
-const KEYBOARD_LANGUAGES = [
-    { value: 'en', label: 'English' },
-    { value: 'es', label: 'Español' },
-    { value: 'so', label: 'Af Soomaali' }
-];
-
-const instructionTexts = {
-    en: '<strong>Tap</strong> or <strong>Swipe</strong> letters, <strong>Hold+Drag</strong> to draw trails, and use <strong>Finger Tracking</strong> below for hands-free typing.',
-    es: '<strong>Toca</strong> o <strong>desliza</strong> letras, <strong>mantén y arrastra</strong> para dibujar trazos y usa el <strong>seguimiento de dedos</strong> debajo para escribir sin manos.',
-    so: '<strong>Taabo</strong> ama <strong>siib</strong> xarafka, <strong>hay oo jiid</strong> si aad raad u samayso, kuna isticmaal <strong>Raadinta Farta</strong> hoose si aad gacmo la’aan u qorto.'
-};
 
 const TRIAL_SENTENCES = [
     'She packed twelve blue pens in her small bag.',
@@ -151,14 +121,12 @@ if (currentTheme !== 'dark') {
     currentTheme = 'light';
 }
 let statsVisible = safeGetStorage(STORAGE_KEYS.statsVisible) !== 'false';
-const savedKeyboardLanguage = safeGetStorage(STORAGE_KEYS.keyboardLanguage);
-let keyboardLanguage = keyboardLetterLayouts[savedKeyboardLanguage] ? savedKeyboardLanguage : 'en';
+let keyboardLanguage = 'en';
 let keyboardAreaElement = null;
 let gestureTrailLayer = null;
 let gestureTrailDots = [];
 let holdGestureTimer = null;
 let holdGestureActive = false;
-let grammarStatusTimer = null;
 let introOverlayElement = null;
 let introHideCheckbox = null;
 let accentStartColor = safeGetStorage(STORAGE_KEYS.accentStart) || DEFAULT_ACCENT_START;
@@ -209,13 +177,11 @@ function initialize() {
     setupTextareaListeners(textarea);
     setupSettingsPanel();
     setupKeySizeControls();
-    setupLanguageSelect();
-    setupKeyboardLanguageSelect();
+    setupKeySpacingControls();
     setupThemeToggle();
     setupAccentColorControls();
     setupStatsToggle();
     setupVoiceInput();
-    setupGrammarFixer();
     setupTrialControls();
     updateInstructionsText();
     setupIntroModal(introCloseButton, helpButton);
@@ -316,6 +282,49 @@ function setupKeySizeControls() {
     applySize(slider.value || 50);
 }
 
+function setupKeySpacingControls() {
+    configureSpacingSlider({
+        sliderId: 'key-gap-x-slider',
+        valueId: 'key-gap-x-value',
+        cssVar: '--key-gap-x',
+        storageKey: STORAGE_KEYS.keyGapX,
+        defaultValue: 32,
+        legacyKey: 'swipeKeyboardKeyGap'
+    });
+    
+    configureSpacingSlider({
+        sliderId: 'key-gap-y-slider',
+        valueId: 'key-gap-y-value',
+        cssVar: '--key-gap-y',
+        storageKey: STORAGE_KEYS.keyGapY,
+        defaultValue: 32
+    });
+}
+
+function configureSpacingSlider({ sliderId, valueId, cssVar, storageKey, defaultValue, legacyKey = null }) {
+    const slider = document.getElementById(sliderId);
+    if (!slider) return;
+    const valueLabel = document.getElementById(valueId);
+    
+    const savedValue = safeGetStorage(storageKey) ?? (legacyKey ? safeGetStorage(legacyKey) : null);
+    if (savedValue) {
+        slider.value = savedValue;
+    }
+    
+    const applyValue = (rawValue) => {
+        const numeric = Math.max(0, Math.min(32, Number(rawValue) || defaultValue));
+        document.documentElement.style.setProperty(cssVar, `${numeric}px`);
+        if (valueLabel) valueLabel.textContent = `${numeric}px`;
+    };
+    
+    slider.addEventListener('input', () => {
+        applyValue(slider.value);
+        safeSetStorage(storageKey, slider.value);
+    });
+    
+    applyValue(slider.value || defaultValue);
+}
+
 function setupSettingsPanel() {
     const settingsBtn = document.getElementById('settings-button');
     const panel = document.getElementById('settings-panel');
@@ -349,79 +358,6 @@ function setupSettingsPanel() {
         if (event.key === 'Escape' && panel.classList.contains('open')) {
             togglePanel(false);
         }
-    });
-}
-
-function setupLanguageSelect() {
-    const select = document.getElementById('language-select');
-    if (!select) return;
-    
-    populateLanguageSelect(select);
-    
-    if (![...select.options].some(option => option.value === languagePreference)) {
-        languagePreference = 'auto';
-    }
-    
-    select.value = languagePreference;
-    applyLanguagePreference(languagePreference);
-    
-    select.addEventListener('change', () => {
-        applyLanguagePreference(select.value);
-    });
-}
-
-function populateLanguageSelect(select) {
-    select.innerHTML = '';
-    const seen = new Set();
-    
-    const addOption = (value, label) => {
-        if (seen.has(value)) return;
-        const option = document.createElement('option');
-        option.value = value;
-        option.textContent = label;
-        select.appendChild(option);
-        seen.add(value);
-    };
-    
-    LANGUAGE_OPTIONS.forEach(option => addOption(option.value, option.label));
-    
-    const browserLanguages = Array.isArray(navigator.languages) ? navigator.languages : [];
-    browserLanguages.forEach(lang => addOption(lang, `${lang} (browser)`));
-}
-
-function applyLanguagePreference(value) {
-    languagePreference = value || 'auto';
-    voiceLanguage = resolveLanguagePreference(languagePreference);
-    safeSetStorage(STORAGE_KEYS.language, languagePreference);
-    if (recognition) {
-        recognition.lang = voiceLanguage;
-        if (isVoiceActive) {
-            recognition.stop();
-        }
-    }
-}
-
-function setupKeyboardLanguageSelect() {
-    const select = document.getElementById('keyboard-language-select');
-    if (!select) return;
-    
-    select.innerHTML = '';
-    KEYBOARD_LANGUAGES.forEach(option => {
-        const opt = document.createElement('option');
-        opt.value = option.value;
-        opt.textContent = option.label;
-        select.appendChild(opt);
-    });
-    
-    select.value = keyboardLanguage;
-    
-    select.addEventListener('change', () => {
-        const value = select.value;
-        if (!keyboardLetterLayouts[value]) return;
-        keyboardLanguage = value;
-        safeSetStorage(STORAGE_KEYS.keyboardLanguage, keyboardLanguage);
-        rerenderKeyboard();
-        updateInstructionsText();
     });
 }
 
@@ -580,8 +516,7 @@ function colorWithAlpha(hex, alpha) {
 function updateInstructionsText() {
     const instructionsEl = document.getElementById('instructions-text');
     if (!instructionsEl) return;
-    const html = instructionTexts[keyboardLanguage] || instructionTexts.en;
-    instructionsEl.innerHTML = html;
+    instructionsEl.innerHTML = '<strong>Tap</strong> or <strong>Swipe</strong> letters, <strong>Hold+Drag</strong> to draw trails, and use <strong>Finger Tracking</strong> below for hands-free typing.';
 }
 
 function setupStatsToggle() {
@@ -701,59 +636,6 @@ function appendVoiceText(text) {
     countWords();
     logKeystroke('voice', trimmed);
     updateMetrics();
-}
-
-function setupGrammarFixer() {
-    const button = document.getElementById('grammar-fix-btn');
-    const statusSpan = document.getElementById('grammar-status');
-    if (!button || !statusSpan) return;
-    
-    const showStatus = (message, color = 'var(--muted-text)') => {
-        clearTimeout(grammarStatusTimer);
-        statusSpan.textContent = message;
-        statusSpan.style.color = color;
-        grammarStatusTimer = setTimeout(() => {
-            statusSpan.textContent = '';
-        }, 2500);
-    };
-    
-    button.addEventListener('click', () => {
-        const textarea = document.getElementById('typed');
-        if (!textarea) return;
-        const original = textarea.value;
-        if (!original.trim()) {
-            showStatus('Nothing to fix');
-            return;
-        }
-        
-        const fixed = applyGrammarRules(original);
-        if (fixed === original.trim()) {
-            showStatus('Looks great!');
-            return;
-        }
-        
-        textarea.value = fixed;
-        totalCharacters = textarea.value.length;
-        countWords();
-        updateMetrics();
-        logKeystroke('grammar', 'fix');
-        showStatus('Grammar updated', '#4CAF50');
-    });
-}
-
-function applyGrammarRules(text) {
-    let cleaned = text.replace(/\r\n/g, '\n');
-    cleaned = cleaned.replace(/\s+/g, ' ');
-    cleaned = cleaned.replace(/\s+([,.!?;:])/g, '$1');
-    cleaned = cleaned.replace(/([,.!?;:])(?!\s|$)/g, '$1 ');
-    cleaned = cleaned.replace(/\b(i)\b/g, 'I');
-    cleaned = cleaned.replace(/(^|[.!?]\s+)([a-z])/g, (match, prefix, letter) => prefix + letter.toUpperCase());
-    cleaned = cleaned.replace(/^([a-z])/, match => match.toUpperCase());
-    cleaned = cleaned.trim();
-    if (cleaned && !/[.!?]$/.test(cleaned)) {
-        cleaned += '.';
-    }
-    return cleaned;
 }
 
 // TESTING MODE / TRIALS
@@ -956,10 +838,6 @@ function computeMSD(input, target) {
 }
 
 function getSelectedLanguageLabel() {
-    const select = document.getElementById('language-select');
-    if (select && select.selectedOptions && select.selectedOptions.length > 0) {
-        return select.selectedOptions[0].textContent;
-    }
     return voiceLanguage;
 }
 
@@ -1190,24 +1068,7 @@ function handleSwipeEnd(e) {
     document.querySelectorAll('.key.active').forEach(key => key.classList.remove('active'));
     
     if (performedSwipe) {
-        const word = swipePath.join('').toLowerCase();
-        const textarea = document.getElementById('typed');
-        
-        // Add the swiped word
-        if (textarea.value && !textarea.value.endsWith(' ')) {
-            textarea.value += ' ';
-            totalCharacters++;
-        }
-        textarea.value += word;
-        
-        // Update analytics
-        totalCharacters += word.length;
-        totalSwipes++;
-        countWords();
-        
-        // Log the swipe
-        logKeystroke('swipe', word, swipePath.length);
-        
+        commitSwipePath(swipePath);
     }
     
     // Reset state
@@ -1220,6 +1081,24 @@ function handleSwipeEnd(e) {
     }
     
     updateMetrics();
+}
+
+function commitSwipePath(path) {
+    if (!path || path.length <= 1) return false;
+    const textarea = document.getElementById('typed');
+    if (!textarea) return false;
+    
+    const word = path.join('').toLowerCase();
+    if (textarea.value && !textarea.value.endsWith(' ')) {
+        textarea.value += ' ';
+        totalCharacters++;
+    }
+    textarea.value += word;
+    totalCharacters += word.length;
+    totalSwipes++;
+    countWords();
+    logKeystroke('swipe', word, path.length);
+    return true;
 }
 
 function addKeyToPath(keyElement) {
@@ -1675,9 +1554,7 @@ function onHandResults(results) {
                 const character = key.dataset.char;
                 const type = key.dataset.type;
                 
-                if (type === 'letter') {
-                    handleTap(character, type);
-                } else if (type === 'special') {
+                if (character && type) {
                     handleTap(character, type);
                 }
                 
