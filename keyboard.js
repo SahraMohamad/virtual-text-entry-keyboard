@@ -58,6 +58,7 @@ const STORAGE_KEYS = {
 
 const DEFAULT_LANGUAGE = navigator.language || 'en-US';
 const HOLD_TO_GESTURE_DELAY = 3000;
+const SWIPE_CLICK_SUPPRESS_DELAY = 1000;
 
 const LANGUAGE_OPTIONS = [
     { value: 'auto', label: `Auto (${DEFAULT_LANGUAGE})` },
@@ -90,6 +91,29 @@ const instructionTexts = {
     so: '<strong>Taabo</strong> ama <strong>siib</strong> xarafka, <strong>hay oo jiid</strong> si aad raad u samayso, kuna isticmaal <strong>Raadinta Farta</strong> hoose si aad gacmo la’aan u qorto.'
 };
 
+const TRIAL_SENTENCES = [
+    'She packed twelve blue pens in her small bag.',
+    'Every bird sang sweet songs in the quiet dawn.',
+    'They watched clouds drift across the golden sky.',
+    'A clever mouse slipped past the sleepy cat.',
+    'Green leaves danced gently in the warm breeze.',
+    'He quickly wrote notes before the test began.',
+    'The tall man wore boots made of soft leather.',
+    'Old clocks ticked loudly in the silent room.',
+    'She smiled while sipping tea on the front porch.',
+    'We found a hidden path behind the old barn.',
+    'Sunlight streamed through cracks in the ceiling.',
+    'Dogs barked at shadows moving through the yard.',
+    'Rain tapped softly against the window glass.',
+    'Bright stars twinkled above the quiet valley.',
+    'He tied the package with ribbon and string.',
+    'A sudden breeze blew papers off the desk.',
+    'The curious child opened every single drawer.',
+    'Fresh apples fell from the heavy tree limbs.',
+    'The artist painted scenes from her memory.',
+    'They danced all night under the glowing moon.'
+];
+
 let currentLayout = 'letters';
 let isShiftActive = false;
 
@@ -98,6 +122,7 @@ let isSwipeActive = false;
 let swipePath = [];
 let lastKeyElement = null;
 let swipeJustEnded = false;
+let swipeSuppressionTimer = null;
 let swipeMoved = false;
 
 // Analytics tracking
@@ -142,6 +167,14 @@ let accentSolidColor = safeGetStorage(STORAGE_KEYS.accentSolid) || DEFAULT_ACCEN
 let accentMode = safeGetStorage(STORAGE_KEYS.accentMode) === 'solid' ? 'solid' : 'gradient';
 // Callback for logging keystrokes (for future WPM/MSD testing)
 let onKeystrokeCallback = null;
+const trialState = {
+    active: false,
+    targetIndex: 0,
+    targetText: '',
+    startTime: null,
+    keystrokes: [],
+    results: null
+};
 
 // INITIALIZATION
 
@@ -183,11 +216,15 @@ function initialize() {
     setupStatsToggle();
     setupVoiceInput();
     setupGrammarFixer();
+    setupTrialControls();
     updateInstructionsText();
     setupIntroModal(introCloseButton, helpButton);
     
     // Update metrics periodically
-    setInterval(updateMetrics, 1000);
+    setInterval(() => {
+        updateMetrics();
+        updateTrialTimerDisplay();
+    }, 1000);
     
     }
 
@@ -614,6 +651,10 @@ function setupVoiceInput() {
         console.error('Voice recognition error:', event.error);
         statusSpan.textContent = `Dictation error: ${event.error}`;
         statusSpan.style.color = '#f44336';
+        isVoiceActive = false;
+        recognition.stop();
+        startBtn.style.display = 'inline-block';
+        stopBtn.style.display = 'none';
     });
     
     startBtn.addEventListener('click', () => {
@@ -627,6 +668,12 @@ function setupVoiceInput() {
             statusSpan.style.color = '#4CAF50';
         } catch (error) {
             console.error('Unable to start dictation:', error);
+            isVoiceActive = false;
+            recognition.stop();
+            startBtn.style.display = 'inline-block';
+            stopBtn.style.display = 'none';
+            statusSpan.textContent = 'Dictation unavailable';
+            statusSpan.style.color = '#f44336';
         }
     });
     
@@ -709,6 +756,204 @@ function applyGrammarRules(text) {
     return cleaned;
 }
 
+// TESTING MODE / TRIALS
+
+function setupTrialControls() {
+    const select = document.getElementById('trial-sentence-select');
+    const randomBtn = document.getElementById('trial-random-btn');
+    const startBtn = document.getElementById('trial-start-btn');
+    const completeBtn = document.getElementById('trial-complete-btn');
+    const cancelBtn = document.getElementById('trial-cancel-btn');
+    
+    updateTrialPanel();
+    updateTrialStatus('Select a target sentence and press "Start Trial" to begin.');
+    
+    if (!select) return;
+    
+    select.innerHTML = '';
+    TRIAL_SENTENCES.forEach((sentence, index) => {
+        const option = document.createElement('option');
+        option.value = index;
+        option.textContent = `${index + 1}. ${sentence}`;
+        select.appendChild(option);
+    });
+    trialState.targetText = TRIAL_SENTENCES[0];
+    trialState.targetIndex = 0;
+    updateTrialPanel();
+    
+    select.addEventListener('change', () => {
+        trialState.targetIndex = Number(select.value);
+        trialState.targetText = TRIAL_SENTENCES[trialState.targetIndex] || '';
+        updateTrialPanel();
+    });
+    
+    randomBtn?.addEventListener('click', () => {
+        const randomIndex = Math.floor(Math.random() * TRIAL_SENTENCES.length);
+        select.value = randomIndex;
+        select.dispatchEvent(new Event('change'));
+    });
+    
+    startBtn?.addEventListener('click', () => startTrial());
+    completeBtn?.addEventListener('click', () => completeTrial());
+    cancelBtn?.addEventListener('click', () => cancelTrial());
+}
+
+function startTrial() {
+    const textarea = document.getElementById('typed');
+    if (!textarea) return;
+    
+    if (!trialState.targetText) {
+        updateTrialStatus('Please choose a target sentence first.', 'error');
+        return;
+    }
+    
+    resetSession();
+    trialState.active = true;
+    trialState.startTime = Date.now();
+    trialState.keystrokes = [];
+    trialState.results = null;
+    
+    updateTrialPanel();
+    updateTrialStatus('Trial running. Type the target sentence.', 'active');
+}
+
+function completeTrial() {
+    if (!trialState.active) {
+        updateTrialStatus('No active trial to complete.', 'error');
+        return;
+    }
+    
+    const textarea = document.getElementById('typed');
+    if (!textarea) return;
+    
+    const typedText = textarea.value.trim();
+    const elapsed = Date.now() - (trialState.startTime || Date.now());
+    const msd = computeMSD(typedText, trialState.targetText || '');
+    const minutes = elapsed / 60000;
+    const netChars = Math.max(0, typedText.length - msd);
+    const adjustedWPM = minutes > 0 ? Number(((netChars / 5) / minutes).toFixed(2)) : 0;
+    
+    trialState.results = {
+        typedText,
+        elapsed,
+        msd,
+        adjustedWPM,
+        keystrokes: [...trialState.keystrokes]
+    };
+    
+    trialState.active = false;
+    trialState.startTime = null;
+    trialState.keystrokes = [];
+    
+    updateTrialPanel();
+    updateTrialStatus('Trial complete! Metrics captured for reporting.', 'success');
+}
+
+function cancelTrial() {
+    if (!trialState.active && !trialState.results) {
+        updateTrialStatus('No trial to cancel.');
+        return;
+    }
+    trialState.active = false;
+    trialState.startTime = null;
+    trialState.keystrokes = [];
+    trialState.results = null;
+    resetSession();
+    updateTrialPanel();
+    updateTrialStatus('Trial reset.', 'info');
+}
+
+function updateTrialPanel() {
+    const panel = document.getElementById('trial-panel');
+    if (!panel) return;
+    
+    const targetEl = document.getElementById('trial-target-text');
+    const typedEl = document.getElementById('trial-typed-text');
+    const wpmEl = document.getElementById('trial-wpm');
+    const msdEl = document.getElementById('trial-msd');
+    const keyEl = document.getElementById('trial-keystrokes');
+    
+    if (targetEl) {
+        targetEl.textContent = trialState.targetText || 'Select a sentence to begin.';
+    }
+    
+    if (typedEl) {
+        const liveValue = document.getElementById('typed')?.value || '';
+        if (trialState.results?.typedText) {
+            typedEl.textContent = trialState.results.typedText || '—';
+        } else if (trialState.active) {
+            typedEl.textContent = liveValue || 'Trial in progress...';
+        } else {
+            typedEl.textContent = '—';
+        }
+    }
+    
+    if (wpmEl) {
+        wpmEl.textContent = trialState.results ? trialState.results.adjustedWPM : (trialState.active ? '…' : '0');
+    }
+    
+    if (msdEl) {
+        msdEl.textContent = trialState.results ? trialState.results.msd : (trialState.active ? '…' : '0');
+    }
+    
+    if (keyEl) {
+        const activeCount = trialState.active ? trialState.keystrokes.length : (trialState.results?.keystrokes.length || 0);
+        keyEl.textContent = activeCount;
+    }
+    
+    updateTrialTimerDisplay();
+}
+
+function updateTrialStatus(message, type = 'info') {
+    const statusEl = document.getElementById('trial-status');
+    if (!statusEl) return;
+    let color = 'var(--muted-text)';
+    if (type === 'error') color = '#f44336';
+    else if (type === 'success') color = '#4CAF50';
+    else if (type === 'active') color = '#2f9e44';
+    statusEl.textContent = message;
+    statusEl.style.color = color;
+}
+
+function updateTrialTimerDisplay() {
+    const elapsedEl = document.getElementById('trial-elapsed');
+    if (!elapsedEl) return;
+    if (trialState.active && trialState.startTime) {
+        elapsedEl.textContent = formatDuration(Date.now() - trialState.startTime);
+    } else if (trialState.results?.elapsed) {
+        elapsedEl.textContent = formatDuration(trialState.results.elapsed);
+    } else {
+        elapsedEl.textContent = '00:00';
+    }
+}
+
+function formatDuration(ms) {
+    const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+    const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
+    const seconds = String(totalSeconds % 60).padStart(2, '0');
+    return `${minutes}:${seconds}`;
+}
+
+function computeMSD(input, target) {
+    const a = input || '';
+    const b = target || '';
+    const dp = Array.from({ length: a.length + 1 }, () => new Array(b.length + 1).fill(0));
+    
+    for (let i = 0; i <= a.length; i++) dp[i][0] = i;
+    for (let j = 0; j <= b.length; j++) dp[0][j] = j;
+    
+    for (let i = 1; i <= a.length; i++) {
+        for (let j = 1; j <= b.length; j++) {
+            const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+            dp[i][j] = Math.min(
+                dp[i - 1][j] + 1,
+                dp[i][j - 1] + 1,
+                dp[i - 1][j - 1] + cost
+            );
+        }
+    }
+    return dp[a.length][b.length];
+}
 
 function getSelectedLanguageLabel() {
     const select = document.getElementById('language-select');
@@ -933,9 +1178,13 @@ function handleSwipeEnd(e) {
     
     if (performedSwipe) {
         swipeJustEnded = true;
-        setTimeout(() => {
+        if (swipeSuppressionTimer) {
+            clearTimeout(swipeSuppressionTimer);
+        }
+        swipeSuppressionTimer = setTimeout(() => {
             swipeJustEnded = false;
-        }, 100);
+            swipeSuppressionTimer = null;
+        }, SWIPE_CLICK_SUPPRESS_DELAY);
     }
     
     document.querySelectorAll('.key.active').forEach(key => key.classList.remove('active'));
@@ -1201,11 +1450,18 @@ function logKeystroke(method, data, swipeLength = null) {
     };
     
     keystrokeLog.push(logEntry);
+    recordTrialKeystroke(logEntry);
     
     // Call external callback if registered
     if (typeof onKeystrokeCallback === 'function') {
         onKeystrokeCallback(logEntry);
     }
+}
+
+function recordTrialKeystroke(logEntry) {
+    if (!trialState.active) return;
+    trialState.keystrokes.push(logEntry);
+    updateTrialPanel();
 }
 
 // Public API for registering callback

@@ -87,29 +87,50 @@
                     </div>
                 </details>
             </div>
+            <div class="settings-section">
+                <details class="settings-group">
+                    <summary>Testing Mode</summary>
+                    <p class="settings-hint">Run formal trials with target sentences and capture keystrokes, MSD, and adjusted WPM.</p>
+                    <label for="trial-sentence-select">Target Sentence</label>
+                    <select id="trial-sentence-select"></select>
+                    <div class="trial-controls">
+                        <button type="button" id="trial-random-btn" class="primary-btn small">Random Sentence</button>
+                        <button type="button" id="trial-start-btn" class="primary-btn small">▶️ Start Trial</button>
+                        <button type="button" id="trial-complete-btn" class="primary-btn small">✅ Complete Trial</button>
+                        <button type="button" id="trial-cancel-btn" class="primary-btn small ghost">✖️ Cancel</button>
+                    </div>
+                    <div id="trial-status" class="trial-status"></div>
+                </details>
+            </div>
         </div>
         
         <!-- Stats Dashboard -->
         <div class="stats-dashboard">
-            <div class="stat-card">
-                <div class="stat-value" id="wpm-display">0</div>
-                <div class="stat-label">WPM</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value" id="efficiency-display">100%</div>
-                <div class="stat-label">Efficiency</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value" id="char-count">0</div>
-                <div class="stat-label">Characters</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value" id="word-count">0</div>
-                <div class="stat-label">Words</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value" id="swipe-count">0</div>
-                <div class="stat-label">Swipes</div>
+            <div class="trial-panel" id="trial-panel">
+                <p class="trial-target"><strong>Target:</strong> <span id="trial-target-text">Select a sentence to begin.</span></p>
+                <p class="trial-typed"><strong>Typed:</strong> <span id="trial-typed-text">—</span></p>
+                <div class="trial-metrics">
+                    <div>
+                        <span class="metric-label">Swipes</span>
+                        <span id="swipe-count">0</span>
+                    </div>
+                    <div>
+                        <span class="metric-label">Elapsed</span>
+                        <span id="trial-elapsed">00:00</span>
+                    </div>
+                    <div>
+                        <span class="metric-label">Adjusted WPM</span>
+                        <span id="trial-wpm">0</span>
+                    </div>
+                    <div>
+                        <span class="metric-label">MSD</span>
+                        <span id="trial-msd">0</span>
+                    </div>
+                    <div>
+                        <span class="metric-label">Keystrokes Logged</span>
+                        <span id="trial-keystrokes">0</span>
+                    </div>
+                </div>
             </div>
         </div>
         
