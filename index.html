@@ -87,16 +87,12 @@
                             <span class="slider"></span>
                         </span>
                     </label>
-                    <p class="settings-hint">Run formal trials with target sentences and capture keystrokes, MSD, and adjusted WPM.</p>
+                    <p class="settings-hint">Run formal trials with target sentences and capture keystrokes, MSD, and adjusted WPM. Trial controls live alongside the Target/Typed summary box.</p>
                     <label for="trial-sentence-select">Target Sentence</label>
                     <select id="trial-sentence-select"></select>
                     <div class="trial-controls">
                         <button type="button" id="trial-random-btn" class="primary-btn small">Random Sentence</button>
-                        <button type="button" id="trial-start-btn" class="primary-btn small">▶️ Start Trial</button>
-                        <button type="button" id="trial-complete-btn" class="primary-btn small">✅ Complete Trial</button>
-                        <button type="button" id="trial-cancel-btn" class="primary-btn small ghost">✖️ Cancel</button>
                     </div>
-                    <div id="trial-status" class="trial-status"></div>
                 </details>
             </div>
         </div>
@@ -105,7 +101,6 @@
         <div class="stats-dashboard">
             <div class="trial-panel" id="trial-panel">
                 <p class="trial-target"><strong>Target:</strong> <span id="trial-target-text">Select a sentence to begin.</span></p>
-                <p class="trial-typed"><strong>Typed:</strong> <span id="trial-typed-text">—</span></p>
                 <div class="trial-metrics">
                     <div>
                         <span class="metric-label">Swipes</span>
@@ -128,18 +123,20 @@
                         <span id="trial-keystrokes">0</span>
                     </div>
                 </div>
+                <div class="trial-inline-controls">
+                    <button type="button" id="trial-start-btn" class="primary-btn small finger-target">▶️ Start Trial</button>
+                    <button type="button" id="trial-complete-btn" class="primary-btn small finger-target">✅ Complete</button>
+                    <button type="button" id="trial-cancel-btn" class="primary-btn small ghost finger-target">✖️ Cancel</button>
+                </div>
+                <div class="trial-inline-status" id="trial-status">Select a target sentence and press Start Trial.</div>
             </div>
         </div>
         
         <!-- Text input area -->
         <div class="input-section">
-            <textarea id="typed" placeholder="Tap keys or swipe across them to type..."></textarea>
+            <textarea id="typed" class="finger-target" placeholder="Tap keys or swipe across them to type..."></textarea>
         </div>
-        
-        <!-- Instructions -->
-        <div class="instructions">
-            <p id="instructions-text"><strong>Tap</strong> or <strong>Swipe</strong> letters, <strong>Hold+Drag</strong> to draw trails, and use <strong>Finger Tracking</strong> below for hands-free typing.</p>
-        </div>
+
         <!-- Keyboard container -->
         <div class="keyboard-area">
             <div id="keyboard-container"></div>

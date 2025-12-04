@@ -183,7 +183,6 @@ function initialize() {
     setupStatsToggle();
     setupVoiceInput();
     setupTrialControls();
-    updateInstructionsText();
     setupIntroModal(introCloseButton, helpButton);
     
     // Update metrics periodically
@@ -247,6 +246,7 @@ function renderKeyboard(container) {
     bottomRow.appendChild(returnBtn);
     
     container.appendChild(bottomRow);
+
 }
 
 function rerenderKeyboard() {
@@ -511,12 +511,6 @@ function colorWithAlpha(hex, alpha) {
     const g = parseInt(sanitized.substring(2, 4), 16);
     const b = parseInt(sanitized.substring(4, 6), 16);
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
-
-function updateInstructionsText() {
-    const instructionsEl = document.getElementById('instructions-text');
-    if (!instructionsEl) return;
-    instructionsEl.innerHTML = '<strong>Tap</strong> or <strong>Swipe</strong> letters, <strong>Hold+Drag</strong> to draw trails, and use <strong>Finger Tracking</strong> below for hands-free typing.';
 }
 
 function setupStatsToggle() {
@@ -1452,6 +1446,8 @@ let camera = null;
 let lastHoveredKey = null;
 let dwellStartTime = null;
 const DWELL_TIME = 700; // 700ms to select a key
+let lastInteractiveElement = null;
+let interactiveDwellStart = null;
 
 function setupHandTracking() {
     const startBtn = document.getElementById('start-hand-tracking');
@@ -1517,6 +1513,7 @@ function setupHandTracking() {
 
 function onHandResults(results) {
     if (!handTrackingActive || !results.multiHandLandmarks || results.multiHandLandmarks.length === 0) {
+        resetInteractiveHover();
         return;
     }
     
@@ -1568,6 +1565,8 @@ function onHandResults(results) {
                 }, 300);
             }
         }
+        resetInteractiveHover();
+        return;
     } else {
         // Not hovering over any key
         if (lastHoveredKey) {
@@ -1576,6 +1575,42 @@ function onHandResults(results) {
             dwellStartTime = null;
         }
     }
+    
+    const interactive = element?.closest('.finger-target');
+    if (interactive) {
+        handleInteractiveHover(interactive);
+    } else {
+        resetInteractiveHover();
+    }
+}
+
+function handleInteractiveHover(element) {
+    if (element !== lastInteractiveElement) {
+        resetInteractiveHover();
+        lastInteractiveElement = element;
+        interactiveDwellStart = Date.now();
+        element.classList.add('finger-hover');
+    } else if (Date.now() - interactiveDwellStart >= DWELL_TIME) {
+        activateInteractiveElement(element);
+    }
+}
+
+function activateInteractiveElement(element) {
+    if (!element) return;
+    if (element.tagName === 'TEXTAREA' || element.tagName === 'INPUT') {
+        element.focus();
+    } else if (typeof element.click === 'function') {
+        element.click();
+    }
+    resetInteractiveHover();
+}
+
+function resetInteractiveHover() {
+    if (lastInteractiveElement) {
+        lastInteractiveElement.classList.remove('finger-hover');
+        lastInteractiveElement = null;
+    }
+    interactiveDwellStart = null;
 }
 
 // Initialize hand tracking controls when ready

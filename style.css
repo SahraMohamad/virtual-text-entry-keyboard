@@ -84,13 +84,6 @@ h1 {
     border-color: #667eea;
 }
 
-.instructions {
-    text-align: center;
-    margin-bottom: 20px;
-    color: var(--muted-text);
-    font-size: 14px;
-}
-
 .hidden {
     display: none !important;
 }
@@ -108,10 +101,33 @@ h1 {
     flex: 1 1 100%;
 }
 
-.trial-target,
-.trial-typed {
+.trial-target {
     margin-bottom: 8px;
     font-size: 14px;
+}
+
+.trial-inline-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 12px;
+}
+
+.trial-inline-status {
+    margin-top: 8px;
+    font-size: 13px;
+    color: var(--muted-text);
+    text-align: center;
+}
+
+.finger-target {
+    position: relative;
+}
+
+.finger-target.finger-hover {
+    outline: 2px solid var(--accent-start);
+    outline-offset: 2px;
 }
 
 .trial-metrics {
