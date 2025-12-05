@@ -54,7 +54,8 @@ const STORAGE_KEYS = {
     accentStart: 'swipeKeyboardAccentStart',
     accentEnd: 'swipeKeyboardAccentEnd',
     accentMode: 'swipeKeyboardAccentMode',
-    accentSolid: 'swipeKeyboardAccentSolid'
+    accentSolid: 'swipeKeyboardAccentSolid',
+    savedTrials: 'swipeKeyboardTrials'
 };
 
 const DEFAULT_LANGUAGE = navigator.language || 'en-US';
@@ -183,6 +184,7 @@ function initialize() {
     setupStatsToggle();
     setupVoiceInput();
     setupTrialControls();
+    setupTrialHistoryPanel();
     setupIntroModal(introCloseButton, helpButton);
     
     // Update metrics periodically
@@ -674,6 +676,24 @@ function setupTrialControls() {
     cancelBtn?.addEventListener('click', () => cancelTrial());
 }
 
+function setupTrialHistoryPanel() {
+    const button = document.getElementById('trial-history-btn');
+    const panel = document.getElementById('trial-history');
+    if (!button || !panel) return;
+    
+    button.addEventListener('click', () => {
+        panel.classList.toggle('hidden');
+        if (!panel.classList.contains('hidden')) {
+            renderTrialHistory();
+        }
+    });
+    
+    // Render immediately if panel starts visible
+    if (!panel.classList.contains('hidden')) {
+        renderTrialHistory();
+    }
+}
+
 function startTrial() {
     const textarea = document.getElementById('typed');
     if (!textarea) return;
@@ -716,6 +736,7 @@ function completeTrial() {
         adjustedWPM,
         keystrokes: [...trialState.keystrokes]
     };
+    persistTrialResults(trialState.results);
     
     trialState.active = false;
     trialState.startTime = null;
@@ -829,6 +850,83 @@ function computeMSD(input, target) {
         }
     }
     return dp[a.length][b.length];
+}
+
+function persistTrialResults(results) {
+    if (!results) return;
+    const payload = {
+        target: trialState.targetText,
+        typed: results.typedText || '',
+        msd: results.msd || 0,
+        adjustedWPM: results.adjustedWPM || 0,
+        keystrokes: results.keystrokes || [],
+        elapsed: results.elapsed || 0,
+        timestamp: Date.now()
+    };
+    try {
+        const existing = getSavedTrials();
+        existing.push(payload);
+        localStorage.setItem(STORAGE_KEYS.savedTrials, JSON.stringify(existing));
+        renderTrialHistory();
+    } catch (error) {
+        console.warn('Unable to persist trial results:', error);
+    }
+}
+
+function getSavedTrials() {
+    try {
+        const raw = localStorage.getItem(STORAGE_KEYS.savedTrials);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+        console.warn('Unable to load saved trials:', error);
+        return [];
+    }
+}
+
+function renderTrialHistory() {
+    const panel = document.getElementById('trial-history');
+    if (!panel) return;
+    const trials = getSavedTrials();
+    if (!trials.length) {
+        panel.innerHTML = '<p class="trial-history-empty">No trials saved yet.</p>';
+        return;
+    }
+    const recent = trials.slice(-10).reverse();
+    const rows = recent.map((trial, index) => {
+        const date = new Date(trial.timestamp || Date.now()).toLocaleString();
+        const target = trial.target || '';
+        const typed = trial.typed || '';
+        const msd = Number(trial.msd ?? 0);
+        const wpm = Number(trial.adjustedWPM ?? 0);
+        return `<tr>
+            <td>${recent.length - index}</td>
+            <td>${target}</td>
+            <td>${typed}</td>
+            <td>${wpm}</td>
+            <td>${msd}</td>
+            <td>${date}</td>
+        </tr>`;
+    }).join('');
+    
+    panel.innerHTML = `
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Target</th>
+                    <th>Typed</th>
+                    <th>Adj. WPM</th>
+                    <th>MSD</th>
+                    <th>Timestamp</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${rows}
+            </tbody>
+        </table>
+    `;
 }
 
 function getSelectedLanguageLabel() {

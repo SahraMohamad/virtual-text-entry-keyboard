@@ -130,6 +130,49 @@ h1 {
     outline-offset: 2px;
 }
 
+.trial-history {
+    margin-top: 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 10px;
+    background: var(--panel-bg);
+}
+
+.trial-history.hidden {
+    display: none;
+}
+
+.trial-history table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.trial-history th,
+.trial-history td {
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--border-color);
+    text-align: left;
+}
+
+.trial-history th {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--muted-text);
+}
+
+.trial-history tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.trial-history-empty {
+    margin: 0;
+    font-size: 13px;
+    color: var(--muted-text);
+    text-align: center;
+}
+
 .trial-metrics {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
