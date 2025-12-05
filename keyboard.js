@@ -677,16 +677,21 @@ function setupTrialControls() {
 }
 
 function setupTrialHistoryPanel() {
-    const button = document.getElementById('trial-history-btn');
+    const historyBtn = document.getElementById('trial-history-btn');
+    const exportBtn = document.getElementById('trial-export-btn');
     const panel = document.getElementById('trial-history');
-    if (!button || !panel) return;
+    if (!historyBtn || !panel) return;
     
-    button.addEventListener('click', () => {
+    historyBtn.addEventListener('click', () => {
         panel.classList.toggle('hidden');
         if (!panel.classList.contains('hidden')) {
             renderTrialHistory();
         }
     });
+    
+    if (exportBtn) {
+        exportBtn.addEventListener('click', exportTrialsToCSV);
+    }
     
     // Render immediately if panel starts visible
     if (!panel.classList.contains('hidden')) {
@@ -927,6 +932,38 @@ function renderTrialHistory() {
             </tbody>
         </table>
     `;
+}
+
+function exportTrialsToCSV() {
+    const trials = getSavedTrials();
+    if (!trials.length) {
+        alert('No trials saved yet.');
+        return;
+    }
+    const headers = ['Target', 'Typed', 'Adjusted WPM', 'MSD', 'Elapsed (ms)', 'Keystrokes', 'Timestamp'];
+    const rows = trials.map(trial => {
+        const keystrokeCount = Array.isArray(trial.keystrokes) ? trial.keystrokes.length : 0;
+        const timestamp = new Date(trial.timestamp || Date.now()).toISOString();
+        return [
+            `"${(trial.target || '').replace(/"/g, '""')}"`,
+            `"${(trial.typed || '').replace(/"/g, '""')}"`,
+            trial.adjustedWPM ?? 0,
+            trial.msd ?? 0,
+            trial.elapsed ?? 0,
+            keystrokeCount,
+            `"${timestamp}"`
+        ].join(',');
+    });
+    const csvContent = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `swipe_trials_${Date.now()}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
 }
 
 function getSelectedLanguageLabel() {

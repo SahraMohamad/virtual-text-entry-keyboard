@@ -173,6 +173,11 @@ h1 {
     text-align: center;
 }
 
+.trial-controls button {
+    min-width: 0;
+    white-space: nowrap;
+}
+
 .trial-metrics {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
