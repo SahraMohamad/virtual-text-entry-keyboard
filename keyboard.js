@@ -639,6 +639,7 @@ function appendVoiceText(text) {
 function setupTrialControls() {
     const select = document.getElementById('trial-sentence-select');
     const randomBtn = document.getElementById('trial-random-btn');
+    const nextBtn = document.getElementById('trial-next-btn');
     const startBtn = document.getElementById('trial-start-btn');
     const completeBtn = document.getElementById('trial-complete-btn');
     const cancelBtn = document.getElementById('trial-cancel-btn');
@@ -655,20 +656,30 @@ function setupTrialControls() {
         option.textContent = `${index + 1}. ${sentence}`;
         select.appendChild(option);
     });
-    trialState.targetText = TRIAL_SENTENCES[0];
-    trialState.targetIndex = 0;
-    updateTrialPanel();
+    
+    const applySentence = (index) => {
+        const total = TRIAL_SENTENCES.length;
+        if (!total) return;
+        const normalized = ((index % total) + total) % total;
+        select.value = normalized;
+        trialState.targetIndex = normalized;
+        trialState.targetText = TRIAL_SENTENCES[normalized] || '';
+        updateTrialPanel();
+    };
+    
+    applySentence(0);
     
     select.addEventListener('change', () => {
-        trialState.targetIndex = Number(select.value);
-        trialState.targetText = TRIAL_SENTENCES[trialState.targetIndex] || '';
-        updateTrialPanel();
+        applySentence(Number(select.value));
     });
     
     randomBtn?.addEventListener('click', () => {
         const randomIndex = Math.floor(Math.random() * TRIAL_SENTENCES.length);
-        select.value = randomIndex;
-        select.dispatchEvent(new Event('change'));
+        applySentence(randomIndex);
+    });
+    
+    nextBtn?.addEventListener('click', () => {
+        applySentence((trialState.targetIndex + 1) % TRIAL_SENTENCES.length);
     });
     
     startBtn?.addEventListener('click', () => startTrial());
@@ -746,6 +757,7 @@ function completeTrial() {
     trialState.active = false;
     trialState.startTime = null;
     trialState.keystrokes = [];
+    textarea.value = trialState.results.typedText;
     
     updateTrialPanel();
     updateTrialStatus('Trial complete! Metrics captured for reporting.', 'success');
